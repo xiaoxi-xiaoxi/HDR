@@ -169,7 +169,10 @@ class EfficientMultiheadAttention(MultiheadAttention):
         # print(x_q.shape)
         # print(x_kv.shape)
         # print(x_kv.shape)
-        out = self.attn(query=x_q, key=x_kv, value=x_kv, need_weights=False)[0]
+
+        # out = self.attn(query=x_q, key=x_kv, value=x_kv, need_weights=False)[0]
+        out = self.attn(query=x_q.permute(1, 0, 2), key=x_kv.permute(1, 0, 2), value=x_kv.permute(1, 0, 2),
+                        need_weights=False)[0].permute(1, 0, 2)
 
         return identity + self.dropout_layer(self.proj_drop(out))
 
@@ -322,7 +325,7 @@ class MixVisionTransformer(BaseModule):
         self.strides = strides
         self.sr_ratios = sr_ratios
         assert num_stages == len(num_layers) == len(num_heads) \
-            == len(patch_sizes) == len(strides) == len(sr_ratios)
+               == len(patch_sizes) == len(strides) == len(sr_ratios)
 
         self.out_indices = out_indices
         assert max(out_indices) < self.num_stages
