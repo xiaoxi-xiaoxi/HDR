@@ -1,8 +1,12 @@
+import os
+
 import cv2
 import yaml
 import os.path as osp
 import sys
-sys.path.insert(0,'E:\PycharmProjects\HDR')
+
+# sys.path.insert(0, r'C:\Users\wangyuan\Desktop\program\program\hand_gesture\HDR-main')
+sys.path.insert(0, r'/data/wangyuan/program/hand_gesture/HDR-main/')
 from mmseg.apis import inference_segmentor, init_segmentor
 import models
 import numpy as np
@@ -13,7 +17,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from PIL import Image
 
-
+os.environ['CUDA_VISIBLE_DEVICES'] = '7'
 
 def unormalize(tensor, mean, div):
     for c, (m, d) in enumerate(zip(mean, div)):
@@ -75,7 +79,7 @@ process_both_kp_bbox_paddings = []
 joints_2D_GT = np.loadtxt('./demo/Tzionas_dataset-02-1-joints_2D_GT-100.txt')[:, 1:]
 joints_2D_GT_valid = np.sum(joints_2D_GT[:, 1:], axis=1) > 0
 
-for i in range(joint_num):
+for i in range(joint_num):   #只包含手势的box，[x,y,w,h]
     if joints_2D_GT_valid[i]:
         both_kp_bbox[0] = min(both_kp_bbox[0], joints_2D_GT[i][0])
         both_kp_bbox[1] = min(both_kp_bbox[1], joints_2D_GT[i][1])
@@ -105,18 +109,18 @@ crop_img_padding, trans, inv_trans = generate_patch_image(img_padding, process_b
                                                           out_shape=[256, 256])
 
 # visual check
-vis = 0
+vis = 1
 if vis:
     fig = plt.figure(figsize=[50, 50])
 
-    plt.subplot(1, 5, 1)
+    plt.subplot(2, 3, 1)
     plt.imshow(img_)
     plt.title('ori_Color')
 
-    plt.subplot(1, 5, 2)
+    plt.subplot(2, 3, 2)
     plt.imshow(img_)
     plt.title('ori_Color+2D annotations')
-    plt.text(joints_2D_GT[0][0], joints_2D_GT[0][1], '0', color="w", fontsize=1)
+    plt.text(joints_2D_GT[0][0], joints_2D_GT[0][1], '0', color="r", fontsize=1)
     for p in range(28):
         if joints_2D_GT_valid[p]:
             plt.plot(joints_2D_GT[p][0], joints_2D_GT[p][1], 'bo', markersize=0.5)
@@ -126,11 +130,11 @@ if vis:
                       edgecolor="yellow",
                       facecolor='none', label="both_kp_bbox"))
 
-    plt.subplot(1, 5, 3)
+    plt.subplot(2, 3, 3)
     plt.imshow(img_padding)
     plt.title(' img_padding')
 
-    plt.subplot(1, 5, 4)
+    plt.subplot(2, 3, 4)
     plt.imshow(img_padding)
     plt.title(' img_padding+2D bbox(padding)')
     plt.gca().add_patch(
@@ -146,7 +150,7 @@ if vis:
                   edgecolor='r',
                   facecolor='none', label="processed_both_kp_bbox"))
 
-    plt.subplot(1, 5, 5)
+    plt.subplot(2, 3, 5)
     plt.imshow(crop_img_padding.copy().astype(np.int32))
     plt.title('crop_img_padding')
 
@@ -173,28 +177,28 @@ r_amodal_resize = cv2.resize(r_amodal, (w, h), interpolation=cv2.INTER_NEAREST)
 r_visible_resize = cv2.resize(r_visible, (w, h), interpolation=cv2.INTER_NEAREST)
 
 #### visual check segmentation result
-vis = 0
+vis = 1
 if vis:
-    fig = plt.figure(figsize=[20, 10])
+    fig = plt.figure(figsize=[50, 50])
     plt.suptitle('visual check segmentation result')
 
-    plt.subplot(1, 5, 1)
+    plt.subplot(2, 3, 1)
     plt.imshow(crop_img_padding.astype(np.int32))
     plt.title('crop_img_padding')
 
-    plt.subplot(1, 5, 2)
+    plt.subplot(2, 3, 2)
     plt.imshow(l_amodal_resize, cmap='gray')
     plt.title('l_amodal_resize')
 
-    plt.subplot(1, 5, 3)
+    plt.subplot(2, 3, 3)
     plt.imshow(l_visible_resize, cmap='gray')
     plt.title('l_visible_resize')
 
-    plt.subplot(1, 5, 4)
+    plt.subplot(2, 3, 4)
     plt.imshow(r_amodal_resize, cmap='gray')
     plt.title('r_amodal_resize')
 
-    plt.subplot(1, 5, 5)
+    plt.subplot(2, 3, 5)
     plt.imshow(r_visible_resize, cmap='gray')
     plt.title('r_visible_resize')
 
@@ -264,10 +268,10 @@ amodal_mask, visible_mask, another_amodal_mask, another_visible_mask = amodal_ma
     np.int32)
 
 ######
-##### this
+##### this    invisible:手被遮挡的部分
 this_invisible_mask = amodal_mask * (1 - visible_mask)  # intersection
 this_invisible_mask = this_invisible_mask.astype(np.float32)
-
+##vidible：除了invisible的部分，包括可见的手和其他区域部分
 this_visible_mask_ = np.clip(visible_mask + (1 - amodal_mask), 0, 1)
 this_visible_mask = this_visible_mask_[np.newaxis, :, :]
 this_visible_mask = this_visible_mask.astype(np.float32)
